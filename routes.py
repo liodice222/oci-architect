@@ -1,8 +1,11 @@
-from flask import render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, session, url_for, redirect
 from app import app
 from db import db
 from models import User, Search
-import requests
+
+import cx_Oracle
+from dotenv import load_dotenv
+import os
 from flask_login import current_user
 
 
@@ -18,61 +21,45 @@ def home():
 @app.route('/search', methods=['GET'])
 def search():
     username = session.get('username')
-    search_query = request.args.get('search')
-    #added print statements for debugging
-    print(f'Search Query: {search_query}')  
-    
-    try:
-        response = requests.get(f'https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{search_query}/JSON')
-        response.raise_for_status() 
-    except requests.exceptions.RequestException as e:
-        print(f'An error occurred: {e}')
-        response = None
+    search_query = request.args.get('search').strip()
+    print(f'Search Query: {search_query}')
 
-    compound_info = response.json() if response and response.status_code == 200 else None
-    compound_data = {}
+    # Load environment variables
+    load_dotenv()
+    USERNAME = os.getenv('Oracle_Username')
+    PASSWORD = os.getenv('Oracle_PW')
+    DSN = cx_Oracle.makedsn(
+        os.getenv('Oracle_Host'),
+        os.getenv('Oracle_Post'),
+        service_name=os.getenv('Oracle_SN')
+    )
 
-    if compound_info:
-        compound = compound_info['PC_Compounds'][0]
-        props = compound['props']
+    # Connect to Oracle DB
+    conn = cx_Oracle.connect(USERNAME, PASSWORD, DSN)
+    cursor = conn.cursor()
 
-    # point of improvement - I want to recreate this for loop for easier readability 
-    #      property_map = {
-    #         ('Allowed', 'IUPAC Name'): 'iupac_name', ....  }
-    #     for prop in props:
-    #         key = (prop['urn'].get('name', ''), prop['urn'].get('label', '')) ...
-    
-    
+    # Prepare and execute query
+    query = """
+        SELECT iupac_name, molecular_weight, compound_complexity, smiles_isomeric,
+               hydrogen_bond_donor, hydrogen_bond_acceptor, charge
+        FROM compounds
+        WHERE compound_name LIKE :comp_name
+    """
+    cursor.execute(query, comp_name=f'%{search_query}%')
+    compound_data = cursor.fetchone()  # fix for more than one record
 
-        # Extracting the IUPAC name, charge, molecular weight, compound complexity 
-        for prop in props:
-            if 'name' in prop['urn'] and prop['urn']['name'] == 'Allowed' and prop['urn']['label'] == 'IUPAC Name':
-                compound_data['iupac_name'] = prop['value']['sval']
-            elif 'label' in prop['urn'] and prop['urn']['label'] == 'Molecular Weight':
-                compound_data['molecular_weight'] = prop['value']['sval'] + ' g/mol'
-            elif 'label' in prop['urn'] and prop['urn']['label'] == 'Compound Complexity':
-                compound_data['compound_complexity'] = prop['value']['fval']
-                compound_data['complexity_datatype'] = prop['urn']['datatype']
-            elif 'name' in prop['urn'] and prop['urn']['name'] == 'Hydrogen Bond Donor':
-                compound_data['hydrogen_bond_donor'] = prop['value']['ival']
-                compound_data['donor_datatype'] = prop['urn']['datatype']
-            elif 'name' in prop['urn'] and prop['urn']['name'] == 'Hydrogen Bond Acceptor':
-                compound_data['hydrogen_bond_acceptor'] = prop['value']['ival']
-                compound_data['acceptor_datatype'] = prop['urn']['datatype']
-            elif 'label' in prop['urn'] and prop['urn']['label'] == 'SMILES' and prop['urn']['name'] == 'Isomeric':
-                compound_data['smiles_isomeric'] = prop['value']['sval']
+    cursor.close()
+    conn.close()
 
-        compound_data['charge'] = compound['charge']
+    if compound_data:
+        keys = ['iupac_name', 'molecular_weight', 'compound_complexity', 'smiles_isomeric',
+                'hydrogen_bond_donor', 'hydrogen_bond_acceptor', 'charge']
+        compound_info = dict(zip(keys, compound_data))
 
+        # add to link user to search models
 
-    # point of improvement: I want to be able to create a relationship with User and Search for an analytics database 
-        # search_result = Search(user_id=username, search_query=search_query, search_result=str(compound_data))
-        # db.session.add(search_result)
-        # db.session.commit()
-
-
-        return render_template('compound_info.html', search_query=search_query, compound_info=compound_data, username = username, current_user = current_user)
+        return render_template('compound_info.html', search_query=search_query, compound_info=compound_info, username=username, current_user=current_user)
     else:
-        return render_template('return.html')
+        return render_template('return.html', message="No results found.")
 
 
