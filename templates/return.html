@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Return to Homepage</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='home.css') }}">
+</head>
+<body>
+    <nav>
+        <a href="{{ url_for('auth.login') }}">Login</a>
+        <a href="{{ url_for('auth.register')}}">Register Here</a>
+        <a href="https://pubchem.ncbi.nlm.nih.gov/">Visit PubChem </a>
+        <a href="https://opendata.oraclecloud.com/ords/r/opendata/opendata/details-cs?data_set_id=2&cs=1LWgWbAhOtwy7imm9IuewSzvgR1Teas0Yi7VSjvARvH-825i7ypPgpWZ8lS1cjc9LvsrQCYa34wH9kBSbG2PIig">ZINC 22 </a>
+    </nav>
+    <div id="login_reqd">
+        <h3>No Compound Information Found, Please Try Again </h3>
+    <br>
+    </div>
+    <div id = "return">
+        <a href="{{ url_for('auth.login') }}" class = "button"> Return to Homepage </a>
+    </div>
+</body>
+</html>
