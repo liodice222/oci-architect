@@ -1,65 +1,62 @@
-from flask import Flask, render_template, request, session, url_for, redirect
+from flask import render_template, request, redirect, url_for, session
 from app import app
 from db import db
 from models import User, Search
-
-import cx_Oracle
-from dotenv import load_dotenv
-import os
+import requests
 from flask_login import current_user
-
-
-
 
 @app.route('/')
 def home():
     print("rendering home.html")
-    return render_template('index.html', current_user = current_user)
-
-
+    return render_template('index.html', current_user=current_user)
 
 @app.route('/search', methods=['GET'])
 def search():
     username = session.get('username')
-    search_query = request.args.get('search').strip()
+    search_query = request.args.get('search')
+    
+    # Debugging print statement
     print(f'Search Query: {search_query}')
+    
+    try:
+        response = requests.get(f'https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{search_query}/JSON')
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f'An error occurred: {e}')
+        response = None
 
-    # Load environment variables
-    load_dotenv()
-    USERNAME = os.getenv('Oracle_Username')
-    PASSWORD = os.getenv('Oracle_PW')
-    DSN = cx_Oracle.makedsn(
-        os.getenv('Oracle_Host'),
-        os.getenv('Oracle_Post'),
-        service_name=os.getenv('Oracle_SN')
-    )
+    compound_info = response.json() if response and response.status_code == 200 else None
+    compound_data = {}
 
-    # Connect to Oracle DB
-    conn = cx_Oracle.connect(USERNAME, PASSWORD, DSN)
-    cursor = conn.cursor()
+    if compound_info:
+        compound = compound_info['PC_Compounds'][0]
+        props = compound['props']
 
-    # Prepare and execute query
-    query = """
-        SELECT iupac_name, molecular_weight, compound_complexity, smiles_isomeric,
-               hydrogen_bond_donor, hydrogen_bond_acceptor, charge
-        FROM compounds
-        WHERE compound_name LIKE :comp_name
-    """
-    cursor.execute(query, comp_name=f'%{search_query}%')
-    compound_data = cursor.fetchone()  # fix for more than one record
+        # Extracting compound properties
+        property_map = {
+            ('Allowed', 'IUPAC Name'): 'iupac_name',
+            ('', 'Molecular Weight'): 'molecular_weight',
+            ('', 'Compound Complexity'): 'compound_complexity',
+            ('Hydrogen Bond Donor', ''): 'hydrogen_bond_donor',
+            ('Hydrogen Bond Acceptor', ''): 'hydrogen_bond_acceptor',
+            ('Isomeric', 'SMILES'): 'smiles_isomeric'
+        }
 
-    cursor.close()
-    conn.close()
+        for prop in props:
+            key = (prop['urn'].get('name', ''), prop['urn'].get('label', ''))
+            if key in property_map:
+                field_name = property_map[key]
+                compound_data[field_name] = prop['value'].get('sval') or prop['value'].get('fval') or prop['value'].get('ival')
+                if field_name == 'molecular_weight':
+                    compound_data[field_name] += ' g/mol'
 
-    if compound_data:
-        keys = ['iupac_name', 'molecular_weight', 'compound_complexity', 'smiles_isomeric',
-                'hydrogen_bond_donor', 'hydrogen_bond_acceptor', 'charge']
-        compound_info = dict(zip(keys, compound_data))
+        compound_data['charge'] = compound['charge']
 
-        # add to link user to search models
+        # TODO: Create a relationship with User and Search for an analytics database
+        # search_result = Search(user_id=username, search_query=search_query, search_result=str(compound_data))
+        # db.session.add(search_result)
+        # db.session.commit()
 
-        return render_template('compound_info.html', search_query=search_query, compound_info=compound_info, username=username, current_user=current_user)
+        return render_template('compound_info.html', search_query=search_query, compound_info=compound_data, username=username, current_user=current_user)
     else:
-        return render_template('return.html', message="No results found.")
-
-
+        return render_template('return.html')
