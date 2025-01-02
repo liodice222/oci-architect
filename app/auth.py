@@ -1,7 +1,7 @@
 #imports
 from flask import redirect, render_template, request, session, url_for, Blueprint
-from db import db
-from models.User import User
+from app.db import db
+from app.models.User import User
 #for password hash 
 from werkzeug.security import generate_password_hash, check_password_hash
 #for login functionality 

@@ -1,16 +1,19 @@
-from flask import render_template, request, redirect, url_for, session
-from app import app
-from db import db
-from models import User, Search
+from flask import Blueprint, render_template, request, session
+from app.db import db  # Correct import for db
+from app.models.User import User  # Correct import for User model
+from app.models.Search import Search  # Assuming you have a Search model
 import requests
 from flask_login import current_user
 
-@app.route('/')
+# Define a blueprint for routes
+main_bp = Blueprint('main', __name__)
+
+@main_bp.route('/')
 def home():
     print("rendering home.html")
     return render_template('index.html', current_user=current_user)
 
-@app.route('/search', methods=['GET'])
+@main_bp.route('/search', methods=['GET'])
 def search():
     username = session.get('username')
     search_query = request.args.get('search')
@@ -51,11 +54,6 @@ def search():
                     compound_data[field_name] += ' g/mol'
 
         compound_data['charge'] = compound['charge']
-
-        # TODO: Create a relationship with User and Search for an analytics database
-        # search_result = Search(user_id=username, search_query=search_query, search_result=str(compound_data))
-        # db.session.add(search_result)
-        # db.session.commit()
 
         return render_template('compound_info.html', search_query=search_query, compound_info=compound_data, username=username, current_user=current_user)
     else:
