@@ -1,5 +1,5 @@
-from models import User
-from db import db
+from app.models import User
+from app.db import db
 
 #search model to be stored in analytics database 
 class Search(db.Model):

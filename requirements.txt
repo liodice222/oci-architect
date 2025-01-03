@@ -6,3 +6,4 @@ Werkzeug
 flask
 gunicorn
 flask_login
+python dotenv

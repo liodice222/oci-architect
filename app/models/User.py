@@ -1,5 +1,5 @@
 from flask_login import UserMixin
-from db import db
+from app.db import db
 
 #set up user model to be stored in user database  
 class User(db.Model, UserMixin):
