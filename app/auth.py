@@ -7,8 +7,18 @@ from werkzeug.security import generate_password_hash, check_password_hash
 #for login functionality 
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 
+#for verifying user email
+import re
+
 #set up Blueprint
 auth = Blueprint('auth', __name__)
+
+def is_valid_email(email):
+    """Validate the email format."""
+    if not email: 
+            return False
+    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(email_regex, email)
 
 #registration route 
 @auth.route('/register', methods=['GET', 'POST'])
@@ -17,6 +27,11 @@ def register():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        email = request.form.get('username')
+
+        # Check if the email is valid
+        if not is_valid_email(email):
+            return render_template('register.html', message="Invalid email format")
 
         #check if user already exists
         existing_user = User.query.filter_by(username=username).first()
