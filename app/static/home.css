@@ -49,6 +49,18 @@ input[type="text"], input[type="password"] {
     font-weight: 200;
 }
 
+input[type="text"], input[type="email"] {
+    display: block;
+    border: 1px solid #CCCCCC;
+    padding: 10px;
+    margin: 10px 0;
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 5px;
+    font-weight: 200;
+}
+
+
 input[type="submit"] {
     background-color: #007BFF;
     color: #FFFFFF;
