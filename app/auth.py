@@ -7,8 +7,32 @@ from werkzeug.security import generate_password_hash, check_password_hash
 #for login functionality 
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 
+#for verifying user email/password security 
+import re
+
 #set up Blueprint
 auth = Blueprint('auth', __name__)
+
+def is_secure_password(password):
+    """Validate the security of a password."""
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long"
+    if not re.search(r"[A-Z]", password):
+        return False, "Password must contain at least one uppercase letter"
+    if not re.search(r"[a-z]", password):
+        return False, "Password must contain at least one lowercase letter"
+    if not re.search(r"\d", password):
+        return False, "Password must contain at least one digit"
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        return False, "Password must contain at least one special character"
+    return True, ""
+
+def is_valid_email(email):
+    """Validate the email format."""
+    if not email: 
+            return False
+    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(email_regex, email)
 
 #registration route 
 @auth.route('/register', methods=['GET', 'POST'])
@@ -17,6 +41,16 @@ def register():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        email = request.form.get('username')
+
+        # Check if the email is valid
+        if not is_valid_email(email):
+            return render_template('register.html', message="Invalid email format")
+        
+        # Validate password security
+        is_valid, error_message = is_secure_password(password)
+        if not is_valid:
+            return render_template('register.html', message=error_message)
 
         #check if user already exists
         existing_user = User.query.filter_by(username=username).first()
@@ -51,7 +85,7 @@ def login():
             login_failed = True
         else:
             login_failed = False
-            #session['username'] = user.username
+            session['username'] = user.username
             login_user(user)
         
         return render_template('index.html', login_failed=login_failed, login_attempted = login_attempted)
