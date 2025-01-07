@@ -3,7 +3,7 @@ from app.db import db  # Correct import for db
 from app.models.User import User  # Correct import for User model
 from app.models.Search import Search  # Assuming you have a Search model
 import requests
-from flask_login import current_user
+from flask_login import current_user, login_required
 
 # Define a blueprint for routes
 main_bp = Blueprint('main', __name__)
@@ -14,6 +14,7 @@ def home():
     return render_template('index.html', current_user=current_user)
 
 @main_bp.route('/search', methods=['GET'])
+@login_required #ensure user is logged in before showing search queries
 def search():
     username = session.get('username')
     search_query = request.args.get('search')
