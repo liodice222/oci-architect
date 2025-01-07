@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, session
 from app.db import db  # Correct import for db
-from app.models.User import User  # Correct import for User model
-from app.models.Search import Search  # Assuming you have a Search model
+from app.models.User import User 
+from app.models.Search import Search  
 import requests
 from flask_login import current_user, login_required
 
