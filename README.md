@@ -7,6 +7,8 @@ Once registered, the username and password is seurely stored in a db using SQLAl
 Project was hosted on public instance on OCI using nginx and gunicorn as webserver configuration. 
 
 Orginal Project Presentation: https://www.youtube.com/watch?v=PDdxAbJka7E 
+
+
 Presentation post Secuirty Enhancements: https://www.youtube.com/watch?v=Upq4h0BlOP8
 
 RECAP: 
